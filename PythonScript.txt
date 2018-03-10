@@ -1,0 +1,51 @@
+Python Code
+
+import pandas as pnd
+import numpy as nmp
+import warnings
+import itertools
+import statsmodels.api as sm
+import matplotlib.pyplot as plt
+
+
+db = pnd.read_csv("/users/Galin/Downloads/BANES_Historic_Car_Park_Occupancy.csv")   #Loading the database with Pandas
+db.head(10)               #Displays the first 10 values from each variable
+db_filtered = db[(db.Name == 'SouthGate General CP')]   #choosing only one park
+db_filtered = db_filtered.drop('Location', 1) 
+db_filtered = db_filtered.drop('Easting', 1)
+db_filtered = db_filtered.drop('Northing', 1)
+db_filtered = db_filtered.drop('ID', 1)
+db_filtered = db_filtered.drop('Description', 1)
+db_filtered = db_filtered.drop('Name', 1)
+db_filtered = db_filtered.drop('Status', 1)
+db_filtered = db_filtered.drop('DateUploaded', 1)
+db_filtered = db_filtered.drop('Capacity', 1)
+db_filtered = db_filtered.drop('Percentage', 1)
+db_filtered = db_filtered.drop_duplicates('LastUpdate') 
+newtime = pnd.to_datetime(db_filtered['LastUpdate'])
+dat1 = pnd.concat([newtime, db_filtered], axis=1)
+db_filtered = dat1.drop('LastUpdate',1) 
+dat1 = pnd.concat([newtime,db_filtered], axis=1)
+dat1 = dat1.sort_values(by=['LastUpdate'])
+dat1
+ts = dat1.set_index('LastUpdate')
+ts1 = ts.convert_objects(convert_numeric=True)
+p = d = q = range(0, 2)
+pdq = list(itertools.product(p, d, q))
+seasonal_pdq = [(x[0], x[1], x[2], 12) for x in list(itertools.product(p, d, q))]
+warnings.filterwarnings("ignore") # specify to ignore warning messages
+
+for param in pdq:
+    for param_seasonal in seasonal_pdq:
+        try:
+            mod = sm.tsa.statespace.SARIMAX(ts1,
+                                            order=param,
+                                            seasonal_order=param_seasonal,
+                                            enforce_stationarity=False,
+                                            enforce_invertibility=False)
+
+            results = mod.fit()
+
+            print('ARIMA{}x{}12 - AIC:{}'.format(param, param_seasonal, results.aic))
+        except:
+            continue
